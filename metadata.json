@@ -1,0 +1,7 @@
+{
+  "name": "Curso Rápido de Cajón",
+  "description": "Pratique Seus Ritmos Aqui - A comprehensive Cajon course platform featuring an AI-powered practice buddy, real-time feedback, and interactive rhythm generators.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

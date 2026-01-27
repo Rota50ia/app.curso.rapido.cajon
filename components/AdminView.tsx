@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, APP_URL } from '../lib/supabase';
 
 const AdminView: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -43,7 +43,8 @@ const AdminView: React.FC = () => {
 
       if (error) throw error;
 
-      const link = `${window.location.origin}?token=${token}`;
+      // Usando APP_URL fixa em vez de window.location.origin
+      const link = `${APP_URL}?token=${token}`;
       setGeneratedLink(link);
       setEmail('');
       setNome('');

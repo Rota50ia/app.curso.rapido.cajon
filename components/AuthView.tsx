@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, APP_URL } from '../lib/supabase';
 
 const AuthView: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -51,7 +51,7 @@ const AuthView: React.FC = () => {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: APP_URL,
         data: {
           nome: nome || 'Aluno'
         }

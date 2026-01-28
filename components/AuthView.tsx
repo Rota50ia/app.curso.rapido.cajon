@@ -61,21 +61,21 @@ const AuthView: React.FC = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#08090d] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
-          <i className="fas fa-envelope-open-text text-4xl text-green-500"></i>
+      <div className="min-h-screen bg-[#08090d] flex flex-col items-center justify-center p-4 text-center">
+        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
+          <i className="fas fa-check text-2xl text-green-500"></i>
         </div>
-        <h2 className="text-3xl font-outfit font-bold text-white mb-4">
+        <h2 className="text-2xl font-outfit font-bold text-white mb-2">
           {isActivationMode ? "Conta ativada! 🎉" : "Verifique seu e-mail"}
         </h2>
-        <p className="text-slate-400 mb-10 max-w-sm leading-relaxed">
+        <p className="text-slate-400 mb-8 max-w-sm leading-relaxed text-sm">
           {isActivationMode 
             ? "Sua conta está pronta. Agora você pode entrar e começar seus treinos de Cajon."
             : "Enviamos um link de confirmação para o seu e-mail. Clique nele para liberar seu acesso."}
         </p>
         <button 
           onClick={() => { setSuccess(false); setIsSignUpMode(false); window.history.replaceState({}, document.title, window.location.pathname); }} 
-          className="bg-white text-black px-10 py-4 rounded-2xl font-black text-lg hover:bg-slate-200 transition-colors shadow-xl"
+          className="bg-white text-black px-8 py-3.5 rounded-xl font-black text-base hover:bg-slate-200 transition-colors shadow-xl"
         >
           Ir para o Login
         </button>
@@ -84,78 +84,81 @@ const AuthView: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#08090d] flex flex-col items-center justify-center p-6 font-inter overflow-x-hidden">
-      {/* Logo Original Restaurado */}
-      <div className="relative mb-8 transform scale-90 md:scale-100">
-        <div className="absolute inset-0 bg-cyan-500/10 blur-[60px] rounded-full scale-150"></div>
-        <div className="relative w-32 h-40 flex items-center justify-center">
-          <svg viewBox="0 0 200 240" className="w-full h-full filter drop-shadow-[0_0_12px_rgba(255,255,255,0.2)]" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <g stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <div className="min-h-screen bg-[#08090d] flex flex-col items-center justify-center p-4 font-inter overflow-x-hidden">
+      {/* Logo Reduzido em 30% (w-20 h-24) */}
+      <div className="relative mb-4 transform scale-[0.7] md:scale-90 transition-transform">
+        <div className="absolute inset-0 bg-cyan-500/10 blur-[30px] rounded-full scale-125"></div>
+        <div className="relative w-20 h-24 flex items-center justify-center">
+          <svg viewBox="0 0 200 240" className="w-full h-full filter drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
               <path d="M40 60 L130 55 L130 185 L40 195 Z" />
               <path d="M130 55 L175 45 L175 170 L130 185 Z" />
               <path d="M40 60 L85 50 L175 45 L130 55 Z" />
               <path d="M45 194.5 L45 202 L60 202 L60 193" />
               <path d="M125 186 L125 195 L140 195 L140 183" />
               <path d="M165 172 L165 182 L180 182 L180 169" />
-              <circle cx="85" cy="125" r="30" fill="#08090d" strokeWidth="4" />
+              <circle cx="85" cy="125" r="30" fill="#08090d" strokeWidth="5" />
               <g fill="white" stroke="none">
-                <circle cx="45" cy="65" r="1.5" /><circle cx="68" cy="63" r="1.5" /><circle cx="91" cy="61" r="1.5" /><circle cx="114" cy="59" r="1.5" /><circle cx="125" cy="58" r="1.5" />
-                <circle cx="125" cy="85" r="1.5" /><circle cx="125" cy="115" r="1.5" /><circle cx="125" cy="145" r="1.5" /><circle cx="125" cy="175" r="1.5" />
-                <circle cx="45" cy="190" r="1.5" /><circle cx="68" cy="188" r="1.5" /><circle cx="91" cy="186" r="1.5" /><circle cx="114" cy="184" r="1.5" />
-                <circle cx="45" cy="95" r="1.5" /><circle cx="45" cy="125" r="1.5" /><circle cx="45" cy="155" r="1.5" />
+                <circle cx="45" cy="65" r="2" /><circle cx="68" cy="63" r="2" /><circle cx="91" cy="61" r="2" /><circle cx="114" cy="59" r="2" /><circle cx="125" cy="58" r="2" />
+                <circle cx="125" cy="85" r="2" /><circle cx="125" cy="115" r="2" /><circle cx="125" cy="145" r="2" /><circle cx="125" cy="175" r="2" />
+                <circle cx="45" cy="190" r="2" /><circle cx="68" cy="188" r="2" /><circle cx="91" cy="186" r="2" /><circle cx="114" cy="184" r="2" />
+                <circle cx="45" cy="95" r="2" /><circle cx="45" cy="125" r="2" /><circle cx="45" cy="155" r="2" />
               </g>
             </g>
           </svg>
         </div>
       </div>
 
-      <h1 className="text-3xl md:text-5xl font-outfit font-extrabold mb-2 text-center tracking-tight">
+      <h1 className="text-xl md:text-5xl font-outfit font-extrabold mb-1 text-center tracking-tight px-2">
         <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 text-transparent bg-clip-text">
           Curso Rápido de Cajón
         </span>
       </h1>
-      <p className="text-slate-500 text-sm md:text-lg mb-10 font-medium italic">Pratique Seus Ritmos Aqui</p>
+      <p className="text-slate-500 text-[10px] md:text-lg mb-6 font-medium italic">Pratique Seus Ritmos Aqui</p>
 
-      <div className="w-full max-w-md bg-[#111218] border border-slate-800/50 rounded-[40px] p-8 md:p-12 shadow-2xl relative overflow-hidden">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-outfit font-bold text-white mb-2 uppercase tracking-tight">
+      {/* Card Otimizado */}
+      <div className="w-full max-w-md bg-[#111218] border border-slate-800/50 rounded-[32px] md:rounded-[40px] p-6 md:p-12 shadow-2xl relative overflow-hidden">
+        <div className="text-center mb-6 md:mb-8">
+          <h2 className="text-lg md:text-3xl font-outfit font-bold text-white mb-1 md:mb-2 uppercase tracking-tight">
             {isActivationMode ? "Ativar Acesso" : (isSignUpMode ? "Criar Minha Conta" : "Bem-vindo")}
           </h2>
-          <p className="text-slate-500 text-sm">
+          <p className="text-slate-500 text-[10px] md:text-sm">
             {isActivationMode ? "Defina sua senha para começar" : (isSignUpMode ? "Cadastre-se para as aulas" : "Acesse seu painel de estudos")}
           </p>
         </div>
 
-        <form onSubmit={isActivationMode ? handleActivate : (isSignUpMode ? handleSignUp : handleLogin)} className="space-y-5">
+        <form onSubmit={isActivationMode ? handleActivate : (isSignUpMode ? handleSignUp : handleLogin)} className="space-y-4 md:space-y-5">
           {isSignUpMode && (
             <div>
-              <label className="block text-white font-bold mb-2 ml-1 text-sm">Nome Completo</label>
-              <input type="text" placeholder="Seu Nome" value={nome} onChange={e => setNome(e.target.value)} className="w-full bg-[#0d0e13] border border-slate-800 rounded-[20px] py-4 px-6 text-slate-300 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-700 font-medium" required />
+              <label className="block text-white font-bold mb-1 ml-1 text-[10px] uppercase tracking-wider">Nome Completo</label>
+              <input type="text" placeholder="Seu Nome" value={nome} onChange={e => setNome(e.target.value)} className="w-full bg-[#0d0e13] border border-slate-800 rounded-xl py-3 px-4 text-slate-300 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-700 text-sm" required />
             </div>
           )}
+          
           <div>
-            <label className="block text-white font-bold mb-2 ml-1 text-sm">E-mail</label>
-            <input type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-[#0d0e13] border border-slate-800 rounded-[20px] py-4 px-6 text-slate-300 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-700 font-medium" required />
+            <label className="block text-white font-bold mb-1 ml-1 text-[10px] uppercase tracking-wider">E-mail</label>
+            <input type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-[#0d0e13] border border-slate-800 rounded-xl py-3 px-4 text-slate-300 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-700 text-sm" required />
           </div>
+
           <div>
-            <label className="block text-white font-bold mb-2 ml-1 text-sm">Senha (6+ caracteres)</label>
-            <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-[#0d0e13] border border-slate-800 rounded-[20px] py-4 px-6 text-slate-300 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-700 font-medium" required minLength={6} />
+            <label className="block text-white font-bold mb-1 ml-1 text-[10px] uppercase tracking-wider">Senha (6+ caracteres)</label>
+            <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-[#0d0e13] border border-slate-800 rounded-xl py-3 px-4 text-slate-300 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-700 text-sm" required minLength={6} />
           </div>
           
-          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#00f2fe] via-[#7d5dfc] to-[#f53fbd] text-[#08090d] py-5 rounded-[20px] font-black text-lg shadow-[0_10px_20px_rgba(125,93,252,0.3)] hover:brightness-110 transition-all active:scale-[0.97] mt-4">
+          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#00f2fe] via-[#7d5dfc] to-[#f53fbd] text-[#08090d] py-3.5 md:py-5 rounded-xl md:rounded-2xl font-black text-sm md:text-lg shadow-[0_10px_20px_rgba(125,93,252,0.2)] hover:brightness-110 transition-all active:scale-[0.97] mt-2 md:mt-4">
             {loading ? 'Processando...' : (isActivationMode ? 'Ativar Conta' : (isSignUpMode ? 'Criar Acesso' : 'Entrar'))}
           </button>
         </form>
 
         {error && (
-          <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
-            <p className="text-red-500 text-[10px] text-center font-bold leading-tight uppercase tracking-widest">{error}</p>
+          <div className="mt-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <p className="text-red-500 text-[9px] text-center font-bold leading-tight uppercase tracking-widest">{error}</p>
           </div>
         )}
 
         {!isActivationMode && (
-          <div className="text-center mt-10">
-            <p className="text-slate-500 text-sm font-medium">
+          <div className="text-center mt-6 md:mt-8">
+            <p className="text-slate-500 text-[10px] md:text-xs font-medium">
               {isSignUpMode ? "Já possui uma senha?" : "Ainda não tem acesso?"}
               <button onClick={() => setIsSignUpMode(!isSignUpMode)} className="text-cyan-400 font-bold ml-2 hover:underline decoration-cyan-400/30 underline-offset-4">
                 {isSignUpMode ? "Fazer Login" : "Criar Senha"}

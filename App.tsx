@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -86,50 +87,52 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#08090d] text-slate-200">
+    <div className="flex min-h-screen bg-[#08090d] text-slate-200 overflow-x-hidden">
+      {/* Sidebar Mobile & Desktop */}
       <Sidebar 
         currentView={currentView} 
-        setView={setCurrentView} 
+        setView={(view) => {
+          setCurrentView(view);
+          setIsSidebarOpen(false);
+        }} 
         onLogout={handleLogout} 
         profile={profile} 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
       
-      <main className="flex-1 ml-0 md:ml-64 p-6 overflow-y-auto">
-        <header className="flex justify-between items-center mb-8 sticky top-0 bg-[#08090d]/80 backdrop-blur-md z-30 py-2">
+      <main className="flex-1 w-full md:ml-64 p-4 md:p-8 overflow-x-hidden">
+        <header className="flex justify-between items-center mb-6 sticky top-0 bg-[#08090d]/90 backdrop-blur-md z-30 py-3 -mx-4 px-4 md:mx-0 md:px-0">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-outfit font-bold text-white">
-              {currentView === AppView.DASHBOARD && "Painel do Aluno"}
-              {currentView === AppView.LESSONS && "Curso de Cajon"}
-              {currentView === AppView.PRACTICE && "Espaço de Treino"}
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden w-10 h-10 flex items-center justify-center bg-slate-800 rounded-xl text-white"
+            >
+              <i className="fas fa-bars"></i>
+            </button>
+            <h1 className="text-xl md:text-2xl font-outfit font-bold text-white truncate max-w-[150px] sm:max-w-none">
+              {currentView === AppView.DASHBOARD && "Painel"}
+              {currentView === AppView.LESSONS && "Curso"}
+              {currentView === AppView.PRACTICE && "Prática"}
               {currentView === AppView.AI_COACH && "Mentor IA"}
-              {currentView === AppView.ADMIN && "Painel do Instrutor"}
+              {currentView === AppView.ADMIN && "Admin"}
             </h1>
           </div>
           
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setCurrentView(AppView.ADMIN)}
-              className={`hidden sm:flex items-center px-4 py-2 rounded-full border border-slate-800 transition-all ${
-                currentView === AppView.ADMIN ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400' : 'bg-[#111218] text-slate-500 hover:text-white'
-              }`}
-            >
-              <i className="fas fa-user-shield mr-2"></i>
-              <span className="text-sm font-bold uppercase tracking-wider">Admin</span>
-            </button>
-            
-            <div className="hidden sm:flex items-center bg-[#111218] px-4 py-2 rounded-full border border-slate-800 shadow-lg">
-              <i className="fas fa-fire text-orange-500 mr-2"></i>
-              <span className="text-sm font-bold text-white">Streak: {profile?.streak || 0}</span>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center bg-[#111218] px-3 py-1.5 rounded-full border border-slate-800 shadow-lg">
+              <i className="fas fa-fire text-orange-500 mr-1.5 text-xs"></i>
+              <span className="text-xs font-black text-white">{profile?.streak || 0}</span>
             </div>
             <img 
               src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`} 
               alt="Avatar" 
-              className="w-10 h-10 rounded-full border-2 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.3)]"
+              className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-cyan-500"
             />
           </div>
         </header>
 
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto pb-20">
           {renderView()}
         </div>
       </main>

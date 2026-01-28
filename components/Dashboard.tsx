@@ -47,88 +47,67 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectView, onSelectLesson, pro
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900/40 to-slate-900 rounded-[40px] p-8 md:p-12 border border-blue-500/20 shadow-2xl">
-        <div className="relative z-10 max-w-lg">
-          <h2 className="text-4xl font-outfit font-black text-white mb-4 leading-tight">
+    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#111218] via-[#00f2fe]/5 to-[#111218] rounded-[30px] md:rounded-[40px] p-6 md:p-12 border border-cyan-500/10 shadow-2xl">
+        <div className="relative z-10 max-w-lg text-center md:text-left">
+          <h2 className="text-2xl md:text-4xl font-outfit font-black text-white mb-3 leading-tight">
             Fala, {profile?.nome?.split(' ')[0] || 'Baterista'}! <br/>
-            <span className="text-cyan-400">Pronto para o groove?</span>
+            <span className="text-cyan-400">Pronto pro groove?</span>
           </h2>
-          <p className="text-slate-400 mb-8 text-lg leading-relaxed font-medium">
-            Você já concluiu {profile?.aulas_concluidas || 0} aulas. Mantenha a constância para dominar o Cajon.
+          <p className="text-slate-400 mb-6 text-sm md:text-lg leading-relaxed font-medium">
+            Você já concluiu {profile?.aulas_concluidas || 0} aulas. Mantenha a constância!
           </p>
           <button 
             onClick={() => onSelectLesson(recentLessons[profile?.aulas_concluidas % 3 || 0])}
-            className="bg-white text-black px-10 py-4 rounded-2xl font-black text-lg hover:bg-cyan-400 transition-all shadow-[0_10px_30px_rgba(255,255,255,0.1)] active:scale-95"
+            className="w-full sm:w-auto bg-white text-black px-8 py-3.5 rounded-2xl font-black text-base hover:bg-cyan-400 transition-all shadow-xl active:scale-95"
           >
             Continuar Curso
           </button>
         </div>
-        <div className="absolute -right-10 -bottom-10 opacity-10 rotate-12">
+        <div className="absolute -right-20 -bottom-20 opacity-5 md:opacity-10 rotate-12 pointer-events-none hidden md:block">
            <i className="fas fa-drum text-[300px] text-white"></i>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-[#111218] p-8 rounded-[32px] border border-slate-800/50 hover:border-cyan-500/30 transition-all group relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 blur-[50px]"></div>
-          <div className="w-14 h-14 bg-cyan-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-            <i className="fas fa-clock text-cyan-500 text-xl"></i>
+      {/* Grid Responsiva original mantida */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+        {[
+          { icon: 'fas fa-clock', color: 'text-cyan-500', bg: 'bg-cyan-500/10', label: 'Tempo Praticado', value: tempoFormatado(profile?.tempo_pratica_minutos || 0) },
+          { icon: 'fas fa-check-circle', color: 'text-purple-500', bg: 'bg-purple-500/10', label: 'Aulas Concluídas', value: `${profile?.aulas_concluidas || 0}/45` },
+          { icon: 'fas fa-fire', color: 'text-orange-500', bg: 'bg-orange-500/10', label: 'Streak Atual', value: `${profile?.streak || 0} Dias` }
+        ].map((stat, i) => (
+          <div key={i} className="bg-[#111218] p-5 md:p-8 rounded-[30px] border border-slate-800/50 hover:border-cyan-500/20 transition-all relative overflow-hidden group">
+            <div className={`w-12 h-12 ${stat.bg} rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+              <i className={`${stat.icon} ${stat.color} text-xl`}></i>
+            </div>
+            <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">{stat.label}</h3>
+            <p className="text-xl md:text-3xl font-black text-white font-outfit">{stat.value}</p>
           </div>
-          <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Tempo de Prática</h3>
-          <p className="text-3xl font-black text-white font-outfit">{tempoFormatado(profile?.tempo_pratica_minutos || 0)}</p>
-        </div>
-
-        <div className="bg-[#111218] p-8 rounded-[32px] border border-slate-800/50 hover:border-purple-500/30 transition-all group relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 blur-[50px]"></div>
-          <div className="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-            <i className="fas fa-check-circle text-purple-500 text-xl"></i>
-          </div>
-          <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Aulas Concluídas</h3>
-          <p className="text-3xl font-black text-white font-outfit">{profile?.aulas_concluidas || 0} / 45</p>
-        </div>
-
-        <div className="bg-[#111218] p-8 rounded-[32px] border border-slate-800/50 hover:border-orange-500/30 transition-all group relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 blur-[50px]"></div>
-          <div className="w-14 h-14 bg-orange-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-            <i className="fas fa-fire text-orange-500 text-xl"></i>
-          </div>
-          <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Streak Atual</h3>
-          <p className="text-3xl font-black text-white font-outfit">{profile?.streak || 0} Dias</p>
-        </div>
+        ))}
       </div>
 
       <section>
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="text-2xl font-outfit font-bold text-white tracking-tight">Recentes para você</h3>
-          <button onClick={() => onSelectView(AppView.LESSONS)} className="text-cyan-400 hover:text-cyan-300 font-bold text-sm uppercase tracking-wider">Ver todos</button>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-outfit font-bold text-white uppercase tracking-tight">Recentes</h3>
+          <button onClick={() => onSelectView(AppView.LESSONS)} className="text-cyan-400 font-bold text-xs uppercase tracking-widest hover:underline">Ver todos</button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {recentLessons.map((lesson) => (
             <div 
               key={lesson.id} 
               onClick={() => onSelectLesson(lesson)}
-              className="bg-[#111218] rounded-[32px] border border-slate-800/50 overflow-hidden group hover:-translate-y-2 transition-all duration-500 shadow-xl cursor-pointer"
+              className="bg-[#111218] rounded-[30px] border border-slate-800/50 overflow-hidden group active:scale-[0.98] transition-all cursor-pointer shadow-lg"
             >
-              <div className="relative h-48 overflow-hidden">
-                <img 
-                  src={lesson.thumbnail} 
-                  alt={lesson.title} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#08090d] via-transparent to-transparent opacity-60"></div>
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                   <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-2xl scale-75 group-hover:scale-100 transition-transform duration-500">
-                     <i className="fas fa-play text-black text-xl ml-1"></i>
-                   </div>
-                </div>
+              <div className="relative h-44 overflow-hidden">
+                <img src={lesson.thumbnail} alt={lesson.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
               </div>
               <div className="p-6">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-3 block">{lesson.level}</span>
-                <h4 className="text-white font-bold text-lg mb-4 leading-tight group-hover:text-cyan-400 transition-colors">{lesson.title}</h4>
-                <div className="flex items-center text-xs text-slate-500 font-bold gap-4">
-                  <span className="flex items-center gap-2"><i className="fas fa-headphones text-cyan-500/50"></i> Audio Aula</span>
-                  <span className="flex items-center gap-2"><i className="fas fa-clock text-cyan-500/50"></i> {lesson.duration}</span>
+                <span className="text-[10px] font-black uppercase text-cyan-400 mb-2 block tracking-widest">{lesson.level}</span>
+                <h4 className="text-white font-bold text-base mb-3 leading-tight group-hover:text-cyan-400 transition-colors">{lesson.title}</h4>
+                <div className="flex items-center text-[10px] text-slate-500 font-bold gap-4">
+                  <span className="flex items-center gap-1.5"><i className="fas fa-headphones"></i> AUDIO</span>
+                  <span className="flex items-center gap-1.5"><i className="fas fa-clock"></i> {lesson.duration}</span>
                 </div>
               </div>
             </div>

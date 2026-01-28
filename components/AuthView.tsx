@@ -16,11 +16,31 @@ const AuthView: React.FC = () => {
   const token = params.get('token');
   const isActivationMode = !!token;
 
+  // Busca o e-mail associado ao token para evitar "Database error" por campo vazio
+  useEffect(() => {
+    if (isActivationMode && token) {
+      const fetchInviteData = async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('email, nome')
+          .eq('activation_token', token)
+          .single();
+        
+        if (data && !error) {
+          setEmail(data.email);
+          setNome(data.nome);
+        }
+      };
+      fetchInviteData();
+    }
+  }, [isActivationMode, token]);
+
   const translateError = (err: string) => {
     if (err.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
-    if (err.includes('User already registered')) return 'E-mail já cadastrado.';
+    if (err.includes('User already registered')) return 'E-mail já cadastrado. Tente fazer login.';
     if (err.includes('Password should be at least 6 characters')) return 'A senha deve ter pelo menos 6 caracteres.';
     if (err.includes('Email not confirmed')) return 'E-mail não confirmado. Verifique sua caixa de entrada.';
+    if (err.includes('Database error saving new user')) return 'Erro de sincronização. O usuário já existe ou há um conflito de dados.';
     return err;
   };
 
@@ -48,7 +68,10 @@ const AuthView: React.FC = () => {
         password, 
         options: { 
           emailRedirectTo: APP_URL, 
-          data: { nome: nome || 'Aluno' } 
+          data: { 
+            nome: nome || 'Aluno',
+            full_name: nome || 'Aluno' // Metadado extra para compatibilidade com triggers
+          } 
         }
       });
       if (error) throw error;
@@ -62,14 +85,14 @@ const AuthView: React.FC = () => {
 
   const handleActivate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || password.length < 6) {
+    if (!token || password.length < 6 || !email) {
+      if (!email) setError('E-mail não identificado. Use o link oficial enviado.');
       if (password.length < 6) setError('A senha deve ter no mínimo 6 caracteres');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      // Invocação via SDK: resolve problemas de CORS e autenticação da função
       const { data, error: funcError } = await supabase.functions.invoke('activate-user', {
         body: { token, password, email }
       });
@@ -80,7 +103,7 @@ const AuthView: React.FC = () => {
       setSuccess(true);
     } catch (err: any) {
       console.error('Erro de Ativação:', err);
-      setError(err.message || 'Erro ao conectar com o servidor. Tente novamente.');
+      setError(translateError(err.message || 'Erro ao conectar com o servidor.'));
     } finally {
       setLoading(false);
     }
@@ -117,7 +140,6 @@ const AuthView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#08090d] flex flex-col items-center justify-center p-4 font-inter overflow-x-hidden">
-      {/* Logo Refinado com Brilho Neon */}
       <div className="relative mb-4 transform scale-[0.75] md:scale-95 transition-transform">
         <div className="absolute inset-0 bg-cyan-500/20 blur-[40px] rounded-full scale-125"></div>
         <div className="relative w-24 h-28 flex items-center justify-center">
@@ -159,16 +181,32 @@ const AuthView: React.FC = () => {
         </div>
 
         <form onSubmit={isActivationMode ? handleActivate : (isSignUpMode ? handleSignUp : handleLogin)} className="space-y-5">
-          {isSignUpMode && (
+          {(isSignUpMode || isActivationMode) && (
             <div>
               <label className="block text-slate-300 font-bold mb-1.5 ml-1 text-[10px] uppercase tracking-widest">Nome Completo</label>
-              <input type="text" placeholder="Seu Nome" value={nome} onChange={e => setNome(e.target.value)} className="w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all placeholder:text-slate-800 text-sm" required />
+              <input 
+                type="text" 
+                placeholder="Seu Nome" 
+                value={nome} 
+                onChange={e => setNome(e.target.value)} 
+                className="w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all placeholder:text-slate-800 text-sm" 
+                required 
+                readOnly={isActivationMode && !!nome}
+              />
             </div>
           )}
           
           <div>
             <label className="block text-slate-300 font-bold mb-1.5 ml-1 text-[10px] uppercase tracking-widest">E-mail</label>
-            <input type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all placeholder:text-slate-800 text-sm" required />
+            <input 
+              type="email" 
+              placeholder="seu@email.com" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              className={`w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all placeholder:text-slate-800 text-sm ${isActivationMode ? 'opacity-70 cursor-not-allowed' : ''}`} 
+              required 
+              readOnly={isActivationMode}
+            />
           </div>
 
           <div>
@@ -195,7 +233,7 @@ const AuthView: React.FC = () => {
           </div>
           
           <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 text-[#08090d] py-4 md:py-5 rounded-2xl font-black text-sm md:text-lg shadow-[0_15px_30px_-5px_rgba(59,130,246,0.3)] hover:brightness-110 hover:shadow-cyan-500/20 transition-all active:scale-[0.98] mt-4 uppercase tracking-widest">
-            {loading ? 'Processando...' : (isActivationMode ? 'Ativar Conta' : (isSignUpMode ? 'Criar Acesso' : 'Entrar'))}
+            {loading ? 'Processando...' : (isActivationMode ? 'Ativar Minha Conta' : (isSignUpMode ? 'Criar Acesso' : 'Entrar'))}
           </button>
         </form>
 

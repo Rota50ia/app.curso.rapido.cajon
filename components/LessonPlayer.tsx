@@ -34,11 +34,19 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({ lesson, onClose, onComplete
     const timeSpentMs = Date.now() - startTime;
     const minutesSpent = Math.max(1, Math.floor(timeSpentMs / 60000));
     
-    if (minutesSpent > 0) {
+    if (minutesSpent > 0 && userId) {
       try {
+        // Busca o tempo atual para somar de forma segura
         const { data: profile } = await supabase.from('profiles').select('tempo_pratica_minutos').eq('id', userId).single();
-        await supabase.from('profiles').update({ tempo_pratica_minutos: (profile?.tempo_pratica_minutos || 0) + minutesSpent }).eq('id', userId);
-      } catch (e) {}
+        if (profile) {
+          await supabase.from('profiles').update({ 
+            tempo_pratica_minutos: (profile.tempo_pratica_minutos || 0) + minutesSpent,
+            updated_at: new Date().toISOString()
+          }).eq('id', userId);
+        }
+      } catch (e) {
+        console.error("Erro ao salvar tempo de prática:", e);
+      }
     }
   };
 
@@ -73,13 +81,22 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({ lesson, onClose, onComplete
   };
 
   const handleComplete = async () => {
+    if (completing) return;
     setCompleting(true);
     try {
       await savePracticeTime();
+      // Atualiza o contador de aulas concluídas de forma resiliente
       const { data: profile } = await supabase.from('profiles').select('aulas_concluidas').eq('id', userId).single();
-      await supabase.from('profiles').update({ aulas_concluidas: (profile?.aulas_concluidas || 0) + 1 }).eq('id', userId);
+      if (profile) {
+        await supabase.from('profiles').update({ 
+          aulas_concluidas: (profile.aulas_concluidas || 0) + 1,
+          updated_at: new Date().toISOString()
+        }).eq('id', userId);
+      }
       onComplete();
     } catch (err) {
+      console.error("Erro ao concluir aula:", err);
+      onComplete(); // Fecha o player mesmo se falhar o registro, para não travar a UI
     } finally {
       setCompleting(false);
     }

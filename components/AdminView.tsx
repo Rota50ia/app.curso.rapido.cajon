@@ -24,13 +24,14 @@ const AdminView: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setGeneratedLink('');
     
-    // Gerar um token aleatório
     const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias para expirar
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
     try {
+      // Inserção com valores padrão para evitar erros de constraint no Postgres
       const { error } = await supabase
         .from('profiles')
         .insert([{
@@ -38,12 +39,19 @@ const AdminView: React.FC = () => {
           nome,
           activation_token: token,
           token_expires_at: expiresAt.toISOString(),
-          ativo: false
+          ativo: false,
+          aulas_concluidas: 0,
+          streak: 0,
+          tempo_pratica_minutos: 0
         }]);
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('duplicate key')) {
+          throw new Error("Este e-mail já está cadastrado no sistema.");
+        }
+        throw error;
+      }
 
-      // Usando APP_URL fixa em vez de window.location.origin
       const link = `${APP_URL}?token=${token}`;
       setGeneratedLink(link);
       setEmail('');
@@ -104,7 +112,10 @@ const AdminView: React.FC = () => {
                 className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-cyan-300 text-sm font-mono"
               />
               <button 
-                onClick={() => navigator.clipboard.writeText(generatedLink)}
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedLink);
+                  alert("Link copiado!");
+                }}
                 className="bg-cyan-500 text-black px-6 rounded-xl font-bold hover:bg-cyan-400 transition-all"
               >
                 Copiar

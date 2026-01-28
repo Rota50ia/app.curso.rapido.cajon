@@ -12,6 +12,7 @@ const AuthView: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [isSignUpMode, setIsSignUpMode] = useState(false);
 
+  // Captura o token tanto da query quanto de caminhos amigáveis se houver
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
   const isActivationMode = !!token;
@@ -20,15 +21,22 @@ const AuthView: React.FC = () => {
   useEffect(() => {
     if (isActivationMode && token) {
       const fetchInviteData = async () => {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('email, nome')
-          .eq('activation_token', token)
-          .single();
-        
-        if (data && !error) {
-          setEmail(data.email);
-          setNome(data.nome);
+        try {
+          const { data, error: fetchError } = await supabase
+            .from('profiles')
+            .select('email, nome')
+            .eq('activation_token', token)
+            .single();
+          
+          if (data && !fetchError) {
+            setEmail(data.email);
+            setNome(data.nome);
+          } else {
+            console.error("Token inválido ou expirado");
+            setError("Link de ativação inválido ou já utilizado.");
+          }
+        } catch (err) {
+          console.error("Erro ao buscar dados do convite", err);
         }
       };
       fetchInviteData();
@@ -37,10 +45,12 @@ const AuthView: React.FC = () => {
 
   const translateError = (err: string) => {
     if (err.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
-    if (err.includes('User already registered')) return 'E-mail já cadastrado. Tente fazer login.';
+    if (err.includes('User already registered')) return 'Sua conta já está ativa! Tente fazer login.';
     if (err.includes('Password should be at least 6 characters')) return 'A senha deve ter pelo menos 6 caracteres.';
     if (err.includes('Email not confirmed')) return 'E-mail não confirmado. Verifique sua caixa de entrada.';
-    if (err.includes('Database error saving new user')) return 'Erro de sincronização. O usuário já existe ou há um conflito de dados.';
+    if (err.includes('Database error saving new user')) {
+      return 'Conflito de ativação: Sua conta pode já ter sido criada. Tente fazer login com este e-mail.';
+    }
     return err;
   };
 
@@ -70,7 +80,7 @@ const AuthView: React.FC = () => {
           emailRedirectTo: APP_URL, 
           data: { 
             nome: nome || 'Aluno',
-            full_name: nome || 'Aluno' // Metadado extra para compatibilidade com triggers
+            full_name: nome || 'Aluno'
           } 
         }
       });
@@ -86,24 +96,37 @@ const AuthView: React.FC = () => {
   const handleActivate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || password.length < 6 || !email) {
-      if (!email) setError('E-mail não identificado. Use o link oficial enviado.');
+      if (!email) setError('E-mail não identificado. Verifique se o link está correto.');
       if (password.length < 6) setError('A senha deve ter no mínimo 6 caracteres');
       return;
     }
     setLoading(true);
     setError(null);
     try {
+      // Invocação da Edge Function 'activate-user'
       const { data, error: funcError } = await supabase.functions.invoke('activate-user', {
-        body: { token, password, email }
+        body: { 
+          token, 
+          password, 
+          email,
+          nome: nome // Enviando nome também para garantir consistência
+        }
       });
 
       if (funcError) throw funcError;
-      if (data && data.error) throw new Error(data.error);
+      if (data && data.error) {
+        // Se a função retornar erro de usuário já existente, tratamos como sucesso/redirecionamento
+        if (data.error.includes('already exists')) {
+          setSuccess(true);
+          return;
+        }
+        throw new Error(data.error);
+      }
 
       setSuccess(true);
     } catch (err: any) {
       console.error('Erro de Ativação:', err);
-      setError(translateError(err.message || 'Erro ao conectar com o servidor.'));
+      setError(translateError(err.message || 'Erro ao processar ativação.'));
     } finally {
       setLoading(false);
     }
@@ -116,17 +139,18 @@ const AuthView: React.FC = () => {
           <i className="fas fa-check text-2xl text-green-500"></i>
         </div>
         <h2 className="text-2xl font-outfit font-bold text-white mb-2">
-          {isActivationMode ? "Conta ativada! 🎉" : "Verifique seu e-mail"}
+          {isActivationMode ? "Tudo pronto! 🎉" : "Verifique seu e-mail"}
         </h2>
         <p className="text-slate-400 mb-8 max-w-sm leading-relaxed text-sm">
           {isActivationMode 
-            ? "Sua conta está pronta. Agora você pode entrar e começar seus treinos de Cajon."
+            ? "Sua conta foi ativada ou já estava pronta para uso. Entre agora para começar as aulas."
             : "Enviamos um link de confirmação para o seu e-mail. Clique nele para liberar seu acesso."}
         </p>
         <button 
           onClick={() => { 
             setSuccess(false); 
             setIsSignUpMode(false); 
+            // Limpa a URL para o login limpo
             window.history.replaceState({}, document.title, window.location.pathname);
             window.location.reload(); 
           }} 
@@ -239,7 +263,7 @@ const AuthView: React.FC = () => {
 
         {error && (
           <div className="mt-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-            <p className="text-red-500 text-[9px] text-center font-bold leading-tight uppercase tracking-widest">{error}</p>
+            <p className="text-red-500 text-[10px] text-center font-bold leading-tight uppercase tracking-widest">{error}</p>
           </div>
         )}
 

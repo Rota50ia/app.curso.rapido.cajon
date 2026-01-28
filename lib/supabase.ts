@@ -6,5 +6,5 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-// URL oficial do app na Hostgator
+// URL oficial atualizada conforme solicitado pelo usuário
 export const APP_URL = 'https://app.curso.rapido.cajon.rota50ia.com'

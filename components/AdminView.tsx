@@ -31,11 +31,10 @@ const AdminView: React.FC = () => {
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     try {
-      // Inserção com valores padrão para evitar erros de constraint no Postgres
       const { error } = await supabase
         .from('profiles')
         .insert([{
-          email,
+          email: email.toLowerCase().trim(),
           nome,
           activation_token: token,
           token_expires_at: expiresAt.toISOString(),
@@ -52,7 +51,8 @@ const AdminView: React.FC = () => {
         throw error;
       }
 
-      const link = `${APP_URL}?token=${token}`;
+      // Link limpo apontando para a raiz com o parâmetro de token
+      const link = `${APP_URL}/?token=${token}`;
       setGeneratedLink(link);
       setEmail('');
       setNome('');
@@ -105,23 +105,23 @@ const AdminView: React.FC = () => {
         {generatedLink && (
           <div className="mt-8 p-6 bg-cyan-500/10 border border-cyan-500/30 rounded-3xl animate-in zoom-in-95">
             <p className="text-cyan-500 font-black text-sm uppercase mb-3">Convite Gerado com Sucesso!</p>
-            <div className="flex gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
               <input 
                 readOnly 
                 value={generatedLink} 
-                className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-cyan-300 text-sm font-mono"
+                className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-cyan-300 text-sm font-mono break-all"
               />
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(generatedLink);
-                  alert("Link copiado!");
+                  alert("Link copiado para a área de transferência!");
                 }}
-                className="bg-cyan-500 text-black px-6 rounded-xl font-bold hover:bg-cyan-400 transition-all"
+                className="bg-cyan-500 text-black px-6 py-3 md:py-0 rounded-xl font-bold hover:bg-cyan-400 transition-all whitespace-nowrap"
               >
-                Copiar
+                Copiar Link
               </button>
             </div>
-            <p className="text-slate-500 text-xs mt-4 italic">Envie este link para o aluno. Ele terá 7 dias para definir a senha.</p>
+            <p className="text-slate-500 text-xs mt-4 italic">Envie este link para o aluno. O link expira em 7 dias.</p>
           </div>
         )}
       </div>

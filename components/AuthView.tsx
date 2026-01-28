@@ -6,6 +6,7 @@ const AuthView: React.FC = () => {
   const [email, setEmail] = useState('');
   const [nome, setNome] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -19,6 +20,7 @@ const AuthView: React.FC = () => {
     if (err.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
     if (err.includes('User already registered')) return 'E-mail já cadastrado.';
     if (err.includes('Password should be at least 6 characters')) return 'A senha deve ter pelo menos 6 caracteres.';
+    if (err.includes('Email not confirmed')) return 'E-mail não confirmado. Verifique sua caixa de entrada.';
     return err;
   };
 
@@ -26,19 +28,36 @@ const AuthView: React.FC = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setError(translateError(error.message)); setLoading(false); }
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(translateError(err.message));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error, data } = await supabase.auth.signUp({
-      email, password, options: { emailRedirectTo: APP_URL, data: { nome: nome || 'Aluno' } }
-    });
-    if (error) { setError(translateError(error.message)); setLoading(false); }
-    else if (data.user) { if (data.session === null) setSuccess(true); setLoading(false); }
+    try {
+      const { error, data } = await supabase.auth.signUp({
+        email, 
+        password, 
+        options: { 
+          emailRedirectTo: APP_URL, 
+          data: { nome: nome || 'Aluno' } 
+        }
+      });
+      if (error) throw error;
+      if (data.user && data.session === null) setSuccess(true);
+    } catch (err: any) {
+      setError(translateError(err.message));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleActivate = async (e: React.FormEvent) => {
@@ -50,13 +69,21 @@ const AuthView: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('https://ctvdlamxicoxniyqcpfd.functions.supabase.co/activate-user', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, password })
+      // Invocação via SDK: resolve problemas de CORS e autenticação da função
+      const { data, error: funcError } = await supabase.functions.invoke('activate-user', {
+        body: { token, password, email }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao ativar conta');
+
+      if (funcError) throw funcError;
+      if (data && data.error) throw new Error(data.error);
+
       setSuccess(true);
-    } catch (err: any) { setError(err.message || 'Erro ao ativar conta'); } finally { setLoading(false); }
+    } catch (err: any) {
+      console.error('Erro de Ativação:', err);
+      setError(err.message || 'Erro ao conectar com o servidor. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (success) {
@@ -74,7 +101,12 @@ const AuthView: React.FC = () => {
             : "Enviamos um link de confirmação para o seu e-mail. Clique nele para liberar seu acesso."}
         </p>
         <button 
-          onClick={() => { setSuccess(false); setIsSignUpMode(false); window.history.replaceState({}, document.title, window.location.pathname); }} 
+          onClick={() => { 
+            setSuccess(false); 
+            setIsSignUpMode(false); 
+            window.history.replaceState({}, document.title, window.location.pathname);
+            window.location.reload(); 
+          }} 
           className="bg-white text-black px-8 py-3.5 rounded-xl font-black text-base hover:bg-slate-200 transition-colors shadow-xl"
         >
           Ir para o Login
@@ -85,7 +117,7 @@ const AuthView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#08090d] flex flex-col items-center justify-center p-4 font-inter overflow-x-hidden">
-      {/* Logo com traços mais fortes e preenchimento sutil */}
+      {/* Logo Refinado com Brilho Neon */}
       <div className="relative mb-4 transform scale-[0.75] md:scale-95 transition-transform">
         <div className="absolute inset-0 bg-cyan-500/20 blur-[40px] rounded-full scale-125"></div>
         <div className="relative w-24 h-28 flex items-center justify-center">
@@ -116,7 +148,6 @@ const AuthView: React.FC = () => {
       </h1>
       <p className="text-slate-400 text-[11px] md:text-lg mb-8 font-medium italic opacity-80">Pratique Seus Ritmos Aqui</p>
 
-      {/* Card com bordas mais suaves e melhor contraste interno */}
       <div className="w-full max-w-md bg-[#111218] border border-slate-800/60 rounded-[32px] md:rounded-[40px] p-7 md:p-12 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] relative overflow-hidden">
         <div className="text-center mb-8">
           <h2 className="text-xl md:text-3xl font-outfit font-bold text-white mb-1 md:mb-2 uppercase tracking-tight">
@@ -142,7 +173,25 @@ const AuthView: React.FC = () => {
 
           <div>
             <label className="block text-slate-300 font-bold mb-1.5 ml-1 text-[10px] uppercase tracking-widest">Senha (6+ caracteres)</label>
-            <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all placeholder:text-slate-800 text-sm" required minLength={6} />
+            <div className="relative group">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                placeholder="••••••••" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                className="w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 pr-14 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all placeholder:text-slate-800 text-sm" 
+                required 
+                minLength={6} 
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-cyan-400 focus:text-cyan-400 transition-all duration-300 p-2 z-10"
+                aria-label={showPassword ? "Esconder senha" : "Mostrar senha"}
+              >
+                <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm md:text-base`}></i>
+              </button>
+            </div>
           </div>
           
           <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 text-[#08090d] py-4 md:py-5 rounded-2xl font-black text-sm md:text-lg shadow-[0_15px_30px_-5px_rgba(59,130,246,0.3)] hover:brightness-110 hover:shadow-cyan-500/20 transition-all active:scale-[0.98] mt-4 uppercase tracking-widest">

@@ -12,12 +12,12 @@ const AuthView: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [isSignUpMode, setIsSignUpMode] = useState(false);
 
-  // Captura o token tanto da query quanto de caminhos amigáveis se houver
+  const N8N_WEBHOOK_URL = 'https://edilson-dark-n8n.7lvlou.easypanel.host/webhook/confirma-cadastro';
+
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
   const isActivationMode = !!token;
 
-  // Busca o e-mail associado ao token para evitar "Database error" por campo vazio
   useEffect(() => {
     if (isActivationMode && token) {
       const fetchInviteData = async () => {
@@ -32,7 +32,6 @@ const AuthView: React.FC = () => {
             setEmail(data.email);
             setNome(data.nome);
           } else {
-            console.error("Token inválido ou expirado");
             setError("Link de ativação inválido ou já utilizado.");
           }
         } catch (err) {
@@ -43,13 +42,30 @@ const AuthView: React.FC = () => {
     }
   }, [isActivationMode, token]);
 
+  // Função para notificar a automação n8n
+  const notifyN8N = async (eventData: any) => {
+    try {
+      await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...eventData,
+          timestamp: new Date().toISOString(),
+          source: 'app-cajon-frontend'
+        })
+      });
+    } catch (e) {
+      console.error("Falha ao comunicar com n8n:", e);
+    }
+  };
+
   const translateError = (err: string) => {
     if (err.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
     if (err.includes('User already registered')) return 'Sua conta já está ativa! Tente fazer login.';
     if (err.includes('Password should be at least 6 characters')) return 'A senha deve ter pelo menos 6 caracteres.';
     if (err.includes('Email not confirmed')) return 'E-mail não confirmado. Verifique sua caixa de entrada.';
     if (err.includes('Database error saving new user')) {
-      return 'Conflito de ativação: Sua conta pode já ter sido criada. Tente fazer login com este e-mail.';
+      return 'Conflito de ativação: Tente fazer login direto.';
     }
     return err;
   };
@@ -59,8 +75,17 @@ const AuthView: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+
+      // Se logou com sucesso, avisamos o n8n para garantir que o 'ativo' seja true se necessário
+      if (data.user) {
+        await notifyN8N({
+          email: email.toLowerCase().trim(),
+          event: 'login_attempt',
+          user_id: data.user.id
+        });
+      }
     } catch (err: any) {
       setError(translateError(err.message));
     } finally {
@@ -74,17 +99,22 @@ const AuthView: React.FC = () => {
     setLoading(true);
     try {
       const { error, data } = await supabase.auth.signUp({
-        email, 
+        email: email.toLowerCase().trim(), 
         password, 
         options: { 
           emailRedirectTo: APP_URL, 
-          data: { 
-            nome: nome || 'Aluno',
-            full_name: nome || 'Aluno'
-          } 
+          data: { nome, full_name: nome } 
         }
       });
       if (error) throw error;
+
+      // Notifica n8n sobre novo cadastro manual
+      await notifyN8N({
+        email: email.toLowerCase().trim(),
+        nome: nome,
+        event: 'new_signup'
+      });
+
       if (data.user && data.session === null) setSuccess(true);
     } catch (err: any) {
       setError(translateError(err.message));
@@ -96,32 +126,33 @@ const AuthView: React.FC = () => {
   const handleActivate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || password.length < 6 || !email) {
-      if (!email) setError('E-mail não identificado. Verifique se o link está correto.');
+      if (!email) setError('E-mail não identificado.');
       if (password.length < 6) setError('A senha deve ter no mínimo 6 caracteres');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      // Invocação da Edge Function 'activate-user'
+      // 1. Notifica o n8n sobre a tentativa de ativação COM o token
+      await notifyN8N({
+        email: email.toLowerCase().trim(),
+        nome: nome,
+        token: token,
+        event: 'activation_started'
+      });
+
+      // 2. Chama a função de ativação do Supabase
       const { data, error: funcError } = await supabase.functions.invoke('activate-user', {
-        body: { 
-          token, 
-          password, 
-          email,
-          nome: nome // Enviando nome também para garantir consistência
-        }
+        body: { token, password, email, nome }
       });
 
       if (funcError) throw funcError;
-      if (data && data.error) {
-        // Se a função retornar erro de usuário já existente, tratamos como sucesso/redirecionamento
-        if (data.error.includes('already exists')) {
-          setSuccess(true);
-          return;
-        }
-        throw new Error(data.error);
-      }
+      
+      // 3. Notifica n8n que a ativação no banco foi concluída
+      await notifyN8N({
+        email: email.toLowerCase().trim(),
+        event: 'activation_completed'
+      });
 
       setSuccess(true);
     } catch (err: any) {
@@ -139,18 +170,17 @@ const AuthView: React.FC = () => {
           <i className="fas fa-check text-2xl text-green-500"></i>
         </div>
         <h2 className="text-2xl font-outfit font-bold text-white mb-2">
-          {isActivationMode ? "Tudo pronto! 🎉" : "Verifique seu e-mail"}
+          {isActivationMode ? "Ativação Confirmada! 🎉" : "Conta Criada!"}
         </h2>
         <p className="text-slate-400 mb-8 max-w-sm leading-relaxed text-sm">
           {isActivationMode 
-            ? "Sua conta foi ativada ou já estava pronta para uso. Entre agora para começar as aulas."
-            : "Enviamos um link de confirmação para o seu e-mail. Clique nele para liberar seu acesso."}
+            ? "Sua automação de acesso foi concluída. Agora você pode entrar na plataforma."
+            : "Enviamos um link para o seu e-mail. Verifique sua caixa de entrada para ativar."}
         </p>
         <button 
           onClick={() => { 
             setSuccess(false); 
             setIsSignUpMode(false); 
-            // Limpa a URL para o login limpo
             window.history.replaceState({}, document.title, window.location.pathname);
             window.location.reload(); 
           }} 
@@ -200,7 +230,7 @@ const AuthView: React.FC = () => {
             {isActivationMode ? "Ativar Acesso" : (isSignUpMode ? "Criar Minha Conta" : "Bem-vindo")}
           </h2>
           <p className="text-slate-500 text-[11px] md:text-sm font-medium">
-            {isActivationMode ? "Defina sua senha para começar" : (isSignUpMode ? "Cadastre-se para as aulas" : "Acesse seu painel de estudos")}
+            {isActivationMode ? "Confirmando dados com n8n..." : (isSignUpMode ? "Cadastre-se para as aulas" : "Acesse seu painel de estudos")}
           </p>
         </div>
 
@@ -213,7 +243,7 @@ const AuthView: React.FC = () => {
                 placeholder="Seu Nome" 
                 value={nome} 
                 onChange={e => setNome(e.target.value)} 
-                className="w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all placeholder:text-slate-800 text-sm" 
+                className="w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 text-slate-200 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-800 text-sm" 
                 required 
                 readOnly={isActivationMode && !!nome}
               />
@@ -227,7 +257,7 @@ const AuthView: React.FC = () => {
               placeholder="seu@email.com" 
               value={email} 
               onChange={e => setEmail(e.target.value)} 
-              className={`w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all placeholder:text-slate-800 text-sm ${isActivationMode ? 'opacity-70 cursor-not-allowed' : ''}`} 
+              className={`w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 text-slate-200 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-800 text-sm ${isActivationMode ? 'opacity-70 cursor-not-allowed' : ''}`} 
               required 
               readOnly={isActivationMode}
             />
@@ -241,29 +271,28 @@ const AuthView: React.FC = () => {
                 placeholder="••••••••" 
                 value={password} 
                 onChange={e => setPassword(e.target.value)} 
-                className="w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 pr-14 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all placeholder:text-slate-800 text-sm" 
+                className="w-full bg-[#0d0e13] border border-slate-800 rounded-2xl py-3.5 px-5 pr-14 text-slate-200 focus:border-cyan-500 outline-none transition-all placeholder:text-slate-800 text-sm" 
                 required 
                 minLength={6} 
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-cyan-400 focus:text-cyan-400 transition-all duration-300 p-2 z-10"
-                aria-label={showPassword ? "Esconder senha" : "Mostrar senha"}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-cyan-400 p-2 z-10"
               >
-                <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm md:text-base`}></i>
+                <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
               </button>
             </div>
           </div>
           
-          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 text-[#08090d] py-4 md:py-5 rounded-2xl font-black text-sm md:text-lg shadow-[0_15px_30px_-5px_rgba(59,130,246,0.3)] hover:brightness-110 hover:shadow-cyan-500/20 transition-all active:scale-[0.98] mt-4 uppercase tracking-widest">
-            {loading ? 'Processando...' : (isActivationMode ? 'Ativar Minha Conta' : (isSignUpMode ? 'Criar Acesso' : 'Entrar'))}
+          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 text-[#08090d] py-4 md:py-5 rounded-2xl font-black text-sm md:text-lg shadow-[0_15px_30px_-5px_rgba(59,130,246,0.3)] hover:brightness-110 active:scale-[0.98] mt-4 uppercase tracking-widest">
+            {loading ? 'Confirmando Automação...' : (isActivationMode ? 'Finalizar Ativação' : (isSignUpMode ? 'Criar Acesso' : 'Entrar'))}
           </button>
         </form>
 
         {error && (
           <div className="mt-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-            <p className="text-red-500 text-[10px] text-center font-bold leading-tight uppercase tracking-widest">{error}</p>
+            <p className="text-red-500 text-[10px] text-center font-bold uppercase tracking-widest">{error}</p>
           </div>
         )}
 

@@ -127,32 +127,30 @@ const AudioLibraryView: React.FC<AudioLibraryViewProps> = ({ onSelectTrack }) =>
         {filteredTracks.map((track) => (
           <div 
             key={track.id} 
-            className="group bg-[#111218] rounded-[40px] border border-slate-800/50 overflow-hidden hover:border-cyan-500/30 transition-all flex flex-col shadow-2xl cursor-pointer"
+            className="group bg-[#0b0c11] rounded-[40px] border border-white/[0.05] overflow-hidden hover:border-cyan-500/30 transition-all flex flex-col shadow-2xl cursor-pointer"
             onClick={() => onSelectTrack(track)}
           >
-            <div className="relative aspect-[4/3] overflow-hidden bg-[#0d0e13] flex items-center justify-center">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent opacity-50"></div>
+            <div className="relative aspect-square overflow-hidden bg-black flex items-center justify-center">
+              {/* Círculo Brilhante conforme Anexo 2 */}
+              <div className="relative w-40 h-40 md:w-48 md:h-48 rounded-full border-[3px] border-cyan-400 shadow-[0_0_30px_rgba(34,211,238,0.4)] flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
+                <CajonIcon className="w-20 h-20 md:w-24 md:h-24 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+                
+                {/* Glow interno extra */}
+                <div className="absolute inset-0 rounded-full bg-cyan-500/5 blur-xl"></div>
+              </div>
               
-              <CajonIcon className="w-24 h-24 text-slate-800/40 transition-all duration-700 group-hover:scale-110 group-hover:text-cyan-900/20" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
               
-              <div className="absolute inset-0 bg-gradient-to-t from-[#08090d] via-transparent to-transparent opacity-90"></div>
-              
-              <div className="absolute top-6 left-6 bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/20 shadow-lg">
+              <div className="absolute top-6 left-6 bg-cyan-500 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/20 shadow-lg z-10">
                 {track.level}
               </div>
-              
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 shadow-2xl scale-75 group-hover:scale-100 transition-transform duration-300">
-                  <CajonIcon className="w-10 h-10 text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" />
-                </div>
-              </div>
 
-              <div className="absolute bottom-8 left-8 right-8">
-                 <h3 className="text-white font-outfit font-black text-xl leading-tight uppercase italic truncate drop-shadow-lg">{track.name}</h3>
+              <div className="absolute bottom-8 left-8 right-8 z-10">
+                 <h3 className="text-white font-outfit font-black text-xl leading-tight uppercase italic truncate drop-shadow-2xl">{track.name}</h3>
               </div>
             </div>
             
-            <div className="p-8 flex-1 flex flex-col bg-[#111218]">
+            <div className="p-8 flex-1 flex flex-col bg-[#0b0c11]">
               <div className="flex items-center justify-between text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">
                 <span className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>

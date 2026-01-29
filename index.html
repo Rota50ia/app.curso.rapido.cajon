@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -5,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Curso Rápido de Cajón - Pratique Seus Ritmos Aqui</title>
     
-    <!-- Favicon Oficial -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 240'%3E%3Cg fill='none' stroke='%2306b6d4' stroke-width='12' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M40 60 L130 55 L130 185 L40 195 Z'/%3E%3Cpath d='M130 55 L175 45 L175 170 L130 185 Z'/%3E%3Cpath d='M40 60 L85 50 L175 45 L130 55 Z'/%3E%3Ccircle cx='85' cy='125' r='30' fill='%230f172a' stroke-width='10'/%3E%3C/g%3E%3C/svg%3E">
+    <!-- Favicon Oficial Atualizado -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 240'%3E%3Cg fill='none' stroke='white' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M50 60 L140 55 L140 185 L50 195 Z'/%3E%3Cpath d='M140 55 L180 45 L180 170 L140 185 Z'/%3E%3Cpath d='M50 60 L90 50 L180 45 L140 55 Z'/%3E%3Ccircle cx='95' cy='125' r='30' stroke-width='8'/%3E%3C/g%3E%3C/svg%3E">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -40,6 +41,16 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        /* Pulse Animation for BPM */
+        @keyframes pulse-bpm {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pulse-bpm {
+            animation: pulse-bpm var(--bpm-duration, 0.6s) infinite;
+        }
     </style>
 <script type="importmap">
 {
@@ -50,8 +61,13 @@
     "react/jsx-runtime": "https://esm.sh/react@19.0.0/jsx-runtime",
     "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.48.1",
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+    "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/"
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "firebase/": "https://esm.sh/firebase@^12.8.0/"
   }
 }
 </script>

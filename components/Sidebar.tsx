@@ -5,28 +5,28 @@ import { AppView } from '../types';
 interface SidebarProps {
   currentView: AppView;
   setView: (view: AppView) => void;
-  onLogout: () => void;
   profile: any;
   isOpen: boolean;
   onClose: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onLogout, profile, isOpen, onClose }) => {
-  const TOTAL_AULAS = 45;
-  const aulasConcluidas = profile?.aulas_concluidas || 0;
-  const progressoPercent = Math.min(Math.round((aulasConcluidas / TOTAL_AULAS) * 100), 100);
+const MetronomeIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 2L7 22h10l-5-20z" />
+    <path d="M12 18a2 2 0 100-4 2 2 0 000 4z" />
+    <path d="M12 14l4-7" />
+  </svg>
+);
 
+const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, profile, isOpen, onClose }) => {
   const menuItems = [
     { id: AppView.DASHBOARD, icon: 'fas fa-home', label: 'Início' },
-    { id: AppView.LESSONS, icon: 'fas fa-play-circle', label: 'Aulas' },
-    { id: AppView.PRACTICE, icon: 'fas fa-metronome', label: 'Prática' },
-    { id: AppView.AI_COACH, icon: 'fas fa-robot', label: 'Mentor IA' },
-    { id: AppView.ADMIN, icon: 'fas fa-user-shield', label: 'Admin' },
+    { id: AppView.LIBRARY, icon: 'fas fa-headphones', label: 'Biblioteca' },
+    { id: AppView.PRACTICE, icon: 'metronome-custom', label: 'Metrônomo' },
   ];
 
   return (
     <>
-      {/* Overlay para fechar no mobile */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] md:hidden"
@@ -40,8 +40,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onLogout, profi
         <div className="p-6">
           <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-cyan-600 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(8,145,178,0.3)]">
-                <i className="fas fa-drum text-white text-xl"></i>
+              <div className="w-10 h-10 bg-transparent border-2 border-white rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                <svg viewBox="0 0 200 240" className="w-6 h-6 fill-none stroke-white" strokeWidth="12">
+                   <path d="M40 60 L130 55 L130 185 L40 195 Z" />
+                   <path d="M130 55 L175 45 L175 170 L130 185 Z" />
+                   <path d="M40 60 L85 50 L175 45 L130 55 Z" />
+                   <circle cx="85" cy="125" r="30" />
+                </svg>
               </div>
               <span className="text-xs font-outfit font-extrabold text-white tracking-tight uppercase leading-none">
                 Curso Rápido <br/> de <span className="text-cyan-400 text-base">Cajón</span>
@@ -66,37 +71,21 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onLogout, profi
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 }`}
               >
-                <i className={`${item.icon} w-5 text-lg text-center`}></i>
+                {item.icon === 'metronome-custom' ? (
+                  <MetronomeIcon className="w-5 h-5" />
+                ) : (
+                  <i className={`${item.icon} w-5 text-lg text-center`}></i>
+                )}
                 <span className="font-bold text-sm">{item.label}</span>
               </button>
             ))}
           </nav>
         </div>
 
-        <div className="mt-auto p-6 border-t border-slate-800/50 space-y-4">
-          <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50">
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">Progresso</p>
-              <span className="text-[10px] font-black text-cyan-400">{progressoPercent}%</span>
-            </div>
-            <div className="h-1.5 w-full bg-slate-800 rounded-full mb-2 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-cyan-600 to-blue-500"
-                style={{ width: `${progressoPercent}%` }}
-              ></div>
-            </div>
-            <p className="text-[10px] text-slate-500 font-medium">
-              {aulasConcluidas}/45 lições
-            </p>
+        <div className="mt-auto p-6 border-t border-slate-800/50">
+          <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50 text-center">
+            <p className="text-[9px] text-slate-600 font-black uppercase tracking-[0.3em]">EDILSON MORAIS © 2026</p>
           </div>
-
-          <button 
-            onClick={onLogout}
-            className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-slate-500 hover:bg-red-500/10 hover:text-red-500 transition-all group"
-          >
-            <i className="fas fa-sign-out-alt w-5 text-lg group-hover:rotate-12"></i>
-            <span className="font-bold text-sm">Sair</span>
-          </button>
         </div>
       </aside>
     </>

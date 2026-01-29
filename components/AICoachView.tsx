@@ -1,234 +1,215 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
+import React, { useState } from 'react';
+import { db } from '../lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-// Implement standard encode/decode as required by guidelines
-function encode(bytes: Uint8Array) {
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+interface AICoachViewProps {
+  profile?: any;
 }
 
-function decode(base64: string) {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
+const AICoachView: React.FC<AICoachViewProps> = ({ profile }) => {
+  const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+  const [serverReply, setServerReply] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [isTestMode, setIsTestMode] = useState(false);
+  const [isSimulated, setIsSimulated] = useState(false);
 
-async function decodeAudioData(
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number,
-  numChannels: number,
-): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+  const BASE_URL = 'https://edilson-dark-n8n.7lvlou.easypanel.host';
+  const ENDPOINT = isTestMode ? '/webhook-test/mentor-ia-app-curso-rapido-cajon' : '/webhook/mentor-ia-app-curso-rapido-cajon';
+  const N8N_WEBHOOK_URL = `${BASE_URL}${ENDPOINT}`;
 
-  for (let channel = 0; channel < numChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+  const saveToHistory = async (userMsg: string, aiReply: string) => {
+    if (!profile?.id) return;
+    try {
+      await addDoc(collection(db, "interacoes"), {
+        userId: profile.id,
+        userEmail: profile.email,
+        pergunta: userMsg,
+        resposta: aiReply,
+        timestamp: serverTimestamp(),
+        contexto: 'mentor_cajon'
+      });
+      console.log("Interação salva no datastore.");
+    } catch (e) {
+      console.error("Erro ao salvar histórico:", e);
     }
-  }
-  return buffer;
-}
+  };
 
-const AICoachView: React.FC = () => {
-  const [isActive, setIsActive] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'connecting' | 'active'>('idle');
-  const [transcripts, setTranscripts] = useState<string[]>([]);
-  
-  const sessionRef = useRef<any>(null);
-  const audioContextInRef = useRef<AudioContext | null>(null);
-  const audioContextOutRef = useRef<AudioContext | null>(null);
-  const nextStartTimeRef = useRef(0);
-  const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
+  const triggerMentor = async () => {
+    if (status === 'sending' || !message.trim()) return;
+    
+    setStatus('sending');
+    setServerReply(null);
+    setDebugInfo(isSimulated ? "Simulando resposta local..." : "Conectando ao n8n...");
 
-  const toggleSession = async () => {
-    if (isActive) {
-      sessionRef.current?.close();
-      setIsActive(false);
-      setStatus('idle');
+    const userMsgCopy = message.trim();
+
+    if (isSimulated) {
+      setTimeout(async () => {
+        const simReply = "Salve! Esta é uma resposta de teste simulada. Quando o n8n estiver configurado, você verá a resposta real da IA aqui!";
+        setServerReply(simReply);
+        setStatus('success');
+        setMessage('');
+        setDebugInfo(null);
+        await saveToHistory(userMsgCopy, simReply);
+      }, 1500);
       return;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    const payload = {
+      email: profile?.email || 'aluno@teste.com',
+      nome: profile?.nome || 'Cajoneiro',
+      mensagem: userMsgCopy,
+      tipo_evento: 'solicitacao_mentor_ia',
+      timestamp: new Date().toISOString(),
+      origem: 'aba_mentor_app'
+    };
+
     try {
-      setStatus('connecting');
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-      
-      audioContextInRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      audioContextOutRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
-        callbacks: {
-          onopen: () => {
-            console.log('Connected to Gemini Live');
-            setStatus('active');
-            setIsActive(true);
-
-            // Audio Input streaming
-            const source = audioContextInRef.current!.createMediaStreamSource(stream);
-            const scriptProcessor = audioContextInRef.current!.createScriptProcessor(4096, 1, 1);
-            
-            scriptProcessor.onaudioprocess = (e) => {
-              const inputData = e.inputBuffer.getChannelData(0);
-              const l = inputData.length;
-              const int16 = new Int16Array(l);
-              for (let i = 0; i < l; i++) {
-                int16[i] = inputData[i] * 32768;
-              }
-              const pcmBlob = {
-                data: encode(new Uint8Array(int16.buffer)),
-                mimeType: 'audio/pcm;rate=16000',
-              };
-
-              sessionPromise.then(session => {
-                session.sendRealtimeInput({ media: pcmBlob });
-              });
-            };
-
-            source.connect(scriptProcessor);
-            scriptProcessor.connect(audioContextInRef.current!.destination);
-          },
-          onmessage: async (message: LiveServerMessage) => {
-            const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
-            if (base64Audio && audioContextOutRef.current) {
-              const ctx = audioContextOutRef.current;
-              nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
-              
-              const buffer = await decodeAudioData(decode(base64Audio), ctx, 24000, 1);
-              const source = ctx.createBufferSource();
-              source.buffer = buffer;
-              source.connect(ctx.destination);
-              
-              source.addEventListener('ended', () => {
-                sourcesRef.current.delete(source);
-              });
-              
-              source.start(nextStartTimeRef.current);
-              nextStartTimeRef.current += buffer.duration;
-              sourcesRef.current.add(source);
-            }
-
-            if (message.serverContent?.interrupted) {
-              sourcesRef.current.forEach(s => s.stop());
-              sourcesRef.current.clear();
-              nextStartTimeRef.current = 0;
-            }
-            
-            if (message.serverContent?.outputTranscription) {
-              setTranscripts(prev => [...prev.slice(-4), `Mentor: ${message.serverContent?.outputTranscription?.text}`]);
-            }
-          },
-          onerror: (e) => console.error('Gemini error:', e),
-          onclose: () => {
-            setIsActive(false);
-            setStatus('idle');
-          }
+      const response = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        config: {
-          responseModalities: [Modality.AUDIO],
-          systemInstruction: "Você é um mentor especialista em Cajon. Seu objetivo é ajudar o aluno a aprender ritmos, corrigir técnica (bumbo, caixa, estalo) e dar feedback motivador. Você ouve o que o aluno toca e responde com dicas práticas. Seja encorajador e técnico.",
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
-          },
-          outputAudioTranscription: {},
-        }
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
 
-      sessionRef.current = await sessionPromise;
+      clearTimeout(timeoutId);
+      const rawData = await response.text();
 
-    } catch (error) {
-      console.error('Failed to connect:', error);
-      setStatus('idle');
+      if (!response.ok) throw new Error(`Erro ${response.status}: ${rawData.substring(0, 50)}`);
+
+      let replyText = rawData;
+      if (rawData) {
+        try {
+          const jsonResponse = JSON.parse(rawData);
+          replyText = jsonResponse.mensagem || jsonResponse.reply || jsonResponse.text || JSON.stringify(jsonResponse);
+        } catch (e) {
+          replyText = rawData;
+        }
+      } else {
+        replyText = "Mensagem enviada! Aguardando o mentor processar...";
+      }
+
+      setServerReply(replyText);
+      setStatus('success');
+      setDebugInfo(null);
+      setMessage('');
+      
+      // Salva no Firestore
+      await saveToHistory(userMsgCopy, replyText);
+
+      setTimeout(() => {
+        setStatus('idle');
+        setServerReply(null);
+      }, 15000);
+
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      setStatus('error');
+      setDebugInfo(err.name === 'AbortError' ? "Tempo esgotado (n8n lento)" : err.message);
+      setTimeout(() => setStatus('idle'), 6000);
     }
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl overflow-hidden relative">
-        <div className="absolute top-0 right-0 p-4">
-           <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-             status === 'active' ? 'bg-green-500/20 text-green-500' : 'bg-slate-800 text-slate-500'
-           }`}>
-             <span className={`w-2 h-2 rounded-full ${status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`}></span>
-             {status === 'active' ? 'Online' : status === 'connecting' ? 'Conectando...' : 'Desconectado'}
-           </div>
-        </div>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] py-10 animate-in fade-in duration-700 px-4">
+      <div className="w-full max-w-2xl bg-[#111218] border border-slate-800/50 rounded-[50px] p-8 md:p-12 shadow-[0_40px_80px_-15px_rgba(0,0,0,0.8)] text-center relative overflow-hidden group">
+        
+        <div className={`absolute -top-24 -right-24 w-64 h-64 blur-[100px] rounded-full transition-colors duration-1000 pointer-events-none ${
+          status === 'success' ? 'bg-green-500/20' : status === 'error' ? 'bg-red-500/20' : 'bg-cyan-500/10'
+        }`}></div>
 
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className={`w-32 h-32 rounded-full bg-slate-800 flex items-center justify-center mb-8 relative transition-all duration-500 ${
-            status === 'active' ? 'ring-8 ring-orange-500/20' : ''
-          }`}>
-            <i className={`fas fa-robot text-5xl transition-colors ${status === 'active' ? 'text-orange-500' : 'text-slate-600'}`}></i>
-            {status === 'active' && (
-              <div className="absolute inset-0 rounded-full border-4 border-orange-500 animate-ping opacity-25"></div>
-            )}
-          </div>
-
-          <h2 className="text-2xl font-outfit font-bold text-white mb-2">Mentor de Cajon IA</h2>
-          <p className="text-slate-400 text-center max-w-sm mb-10 leading-relaxed">
-            Inicie uma conversa por voz. Toque seu cajon, peça ritmos ou tire dúvidas técnicas em tempo real.
-          </p>
-
+        <div className="absolute top-8 right-8 flex flex-col items-end gap-2">
           <button 
-            onClick={toggleSession}
-            disabled={status === 'connecting'}
-            className={`px-10 py-4 rounded-2xl font-bold text-lg shadow-xl transition-all active:scale-95 ${
-              isActive 
-                ? 'bg-slate-800 text-white border border-slate-700 hover:bg-slate-700' 
-                : 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-900/20'
+            onClick={() => setIsTestMode(!isTestMode)}
+            className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border transition-all ${
+              isTestMode ? 'border-orange-500 text-orange-500 bg-orange-500/5' : 'border-slate-800 text-slate-600'
             }`}
           >
-            {isActive ? 'Encerrar Sessão' : status === 'connecting' ? 'Preparando...' : 'Começar a Treinar'}
+            {isTestMode ? 'WEBHOOK TEST' : 'PRODUÇÃO'}
+          </button>
+          <button 
+            onClick={() => setIsSimulated(!isSimulated)}
+            className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border transition-all ${
+              isSimulated ? 'border-cyan-500 text-cyan-500 bg-cyan-500/5' : 'border-slate-800 text-slate-800'
+            }`}
+          >
+            {isSimulated ? 'SIMULAÇÃO ON' : 'SIMULAÇÃO OFF'}
           </button>
         </div>
 
-        <div className="border-t border-slate-800 pt-6 mt-4 min-h-[120px]">
-          <p className="text-xs font-bold text-slate-500 uppercase mb-4 tracking-widest">Transcrição ao Vivo</p>
-          <div className="space-y-3">
-            {transcripts.length === 0 ? (
-              <p className="text-slate-600 text-sm italic">O mentor está ouvindo seus golpes...</p>
+        <div className="relative z-10 flex flex-col items-center">
+          <div 
+            className={`w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center mb-8 transition-all duration-500 shadow-2xl ${
+              status === 'success' ? 'bg-green-500/10 border-2 border-green-500' : 
+              status === 'error' ? 'bg-red-500/10 border-2 border-red-500' : 'bg-cyan-500/10 border-2 border-cyan-500/50'
+            }`}
+          >
+            <i className={`fas ${
+              status === 'sending' ? 'fa-spinner fa-spin text-cyan-400' :
+              status === 'success' ? 'fa-comment-dots text-green-500' : 
+              status === 'error' ? 'fa-exclamation-triangle text-red-500' : 'fa-robot text-cyan-400'
+            } text-3xl md:text-4xl`}></i>
+          </div>
+
+          <h2 className="text-3xl md:text-4xl font-outfit font-semibold text-white mb-4 uppercase italic tracking-normal">
+            {status === 'success' ? 'Dica do Mentor' : status === 'error' ? 'Erro de Conexão' : 'MENTOR CAJONEIRO'}
+          </h2>
+          
+          <div className="min-h-[100px] flex flex-col items-center justify-center mb-8 px-4 w-full">
+            {status === 'success' ? (
+              <div className="bg-cyan-500/5 border border-cyan-500/20 p-6 rounded-3xl w-full animate-in zoom-in-95 shadow-inner">
+                <p className="text-cyan-100 text-sm md:text-base leading-relaxed italic font-medium">
+                  "{serverReply}"
+                </p>
+              </div>
             ) : (
-              transcripts.map((t, idx) => (
-                <div key={idx} className="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 animate-in slide-in-from-bottom-2">
-                  <p className="text-sm text-slate-300">{t}</p>
-                </div>
-              ))
+              <p className="text-slate-400 text-sm md:text-base leading-relaxed font-medium max-w-md">
+                Dúvida técnica ou sugestão de treino? Pergunte ao nosso mentor inteligente (Sua interação será salva):
+              </p>
+            )}
+            
+            {debugInfo && (
+              <div className="mt-4 flex items-center gap-2">
+                <div className="w-1 h-1 bg-cyan-500 rounded-full animate-ping"></div>
+                <span className="text-[10px] font-mono text-cyan-500/70 uppercase tracking-widest">{debugInfo}</span>
+              </div>
             )}
           </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-            <i className="fas fa-lightbulb text-blue-500"></i>
+          <div className={`w-full relative mb-8 transition-all duration-500 ${status === 'success' ? 'opacity-0 h-0 overflow-hidden mb-0' : 'opacity-100'}`}>
+            <textarea 
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              disabled={status === 'sending'}
+              placeholder="Ex: Qual a melhor pegada para o som de bumbo?"
+              className="w-full h-32 md:h-40 bg-black/40 border border-slate-800 rounded-3xl p-6 text-white text-sm md:text-base focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-700 resize-none font-medium"
+            />
           </div>
-          <div>
-            <h4 className="text-white text-sm font-bold">Dica: "Como faço o som de caixa?"</h4>
-            <p className="text-slate-500 text-xs">Pergunte isso para aprender a técnica de estalo.</p>
-          </div>
-        </div>
-        <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-            <i className="fas fa-music text-purple-500"></i>
-          </div>
-          <div>
-            <h4 className="text-white text-sm font-bold">Toque um ritmo de Rock</h4>
-            <p className="text-slate-500 text-xs">A IA pode identificar seu tempo e sugerir variações.</p>
-          </div>
+
+          <button 
+            onClick={triggerMentor}
+            disabled={status === 'sending' || status === 'success' || !message.trim()}
+            className={`w-full py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-4 ${
+              status === 'sending' ? 'bg-slate-800 text-slate-500' :
+              status === 'success' ? 'bg-green-600 text-white' :
+              status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' :
+              message.trim() ? 'bg-cyan-500 text-white hover:bg-cyan-400 hover:shadow-cyan-900/30' : 'bg-slate-800/50 text-slate-600 cursor-not-allowed'
+            }`}
+          >
+            {status === 'sending' ? 'PROCESSANDO...' : status === 'success' ? 'DICA RECEBIDA' : 'FALAR COM MENTOR'}
+          </button>
+          
+          <p className="mt-8 text-[9px] text-slate-700 font-bold uppercase tracking-[0.3em]">
+            Tecnologia de Resposta Instantânea via n8n & Firestore
+          </p>
         </div>
       </div>
     </div>

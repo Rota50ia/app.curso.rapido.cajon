@@ -8,3 +8,11 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // URL oficial atualizada conforme solicitado pelo usuário
 export const APP_URL = 'https://app.curso.rapido.cajon.rota50ia.com'
+
+// Helper para obter URL de áudio do bucket específico
+export const getAudioUrl = (fileName: string) => {
+  const { data } = supabase.storage
+    .from('curso-rapido-cajon-faixas-audio')
+    .getPublicUrl(fileName);
+  return data.publicUrl;
+};
